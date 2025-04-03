@@ -298,12 +298,10 @@ void saveConfig() {
     return;
   }
 
-  SerialDebug.printf("Saving JSON: %s\n", json.as<String>().c_str());
-
   serializeJson(json, configFile);
   configFile.close();
 
-  SerialDebug.printf("Saved JSON: %s", json.as<String>().c_str());
+  SerialDebug.printf("Saved JSON: %s\n", json.as<String>().c_str());
 }
 
 void loadConfig() {
@@ -411,9 +409,12 @@ void setupWifi() {
   wifiManager.addParameter(&wifi_param_mqtt_password);
 
   if (WiFi.status() == WL_CONNECTED || wifiManager.autoConnect(BOARD_ID.c_str())) {
-    WiFi.mode(WIFI_STA);
+    // If we are connected to autoConnect, start the web portal for the configuration screen,
+    // as otherwise it would not be accessible.
+    WiFi.mode(WIFI_STA); // Force the connection to be STA, not AP
     wifiManager.startWebPortal();
-    // digitalWrite(LED_BUILTIN, HIGH);
+  } else {
+    SerialDebug.println("Failed to connect to WiFi");
   }
 }
 
@@ -471,11 +472,9 @@ void resetWifiSettingsAndReboot() {
 }
 
 void mqttConnect() {
-  SerialDebug.printf("Connecting to MQTT server: %s (%s : %s)... ", mqtt_server,
-                     mqtt_username, mqtt_password);
+  SerialDebug.printf("Connecting to MQTT server: %s (%s : %s)... ", mqtt_server, mqtt_username, mqtt_password);
 
-  if (mqttClient.connect(BOARD_ID.c_str(), mqtt_username, mqtt_password,
-                         MQTT_TOPIC_AVAILABILITY.c_str(), 1, true, "offline")) {
+  if (mqttClient.connect(BOARD_ID.c_str(), mqtt_username, mqtt_password, MQTT_TOPIC_AVAILABILITY.c_str(), 1, true, "offline")) {
     SerialDebug.println("connected");
 
     mqttClient.subscribe(MQTT_TOPIC_COMMAND.c_str());
