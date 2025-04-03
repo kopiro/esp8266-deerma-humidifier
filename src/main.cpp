@@ -48,15 +48,14 @@ WiFiManager wifiManager(SerialDebug);
 WiFiClient wifiClient;
 PubSubClient mqttClient;
 
-WiFiManagerParameter wifi_param_mqtt_server("server", "MQTT server",
-                                            mqtt_server,
-                                            sizeof(mqtt_server));
-WiFiManagerParameter wifi_param_mqtt_username("user", "MQTT username",
-                                              mqtt_username,
-                                              sizeof(mqtt_username));
-WiFiManagerParameter wifi_param_mqtt_password("pass", "MQTT password",
-                                              mqtt_password,
-                                              sizeof(mqtt_password));
+WiFiManagerParameter wifi_param_mqtt_server("mqtt_server", "MQTT server",
+  mqtt_server, sizeof(mqtt_server));
+WiFiManagerParameter wifi_param_mqtt_username("mqtt_user", "MQTT username",
+    mqtt_username,
+    sizeof(mqtt_username));
+WiFiManagerParameter wifi_param_mqtt_password("mqtt_pass", "MQTT password",
+    mqtt_password,
+    sizeof(mqtt_password));
 
 enum humMode_t { unknown = -1, low = 1, medium = 2, high = 3, setpoint = 4 };
 struct humidifierState_t {
@@ -288,9 +287,9 @@ void saveConfig() {
   SerialDebug.println("Saving config...");
 
   DynamicJsonDocument json(512);
-  json["mqtt_server"] = mqtt_server;
-  json["mqtt_username"] = mqtt_username;
-  json["mqtt_password"] = mqtt_password;
+  json["mqtt_server"] = wifi_param_mqtt_server.getValue();
+  json["mqtt_username"] = wifi_param_mqtt_username.getValue();
+  json["mqtt_password"] = wifi_param_mqtt_password.getValue();
 
   File configFile = SPIFFS.open("/config.json", "w");
   if (!configFile) {
@@ -335,13 +334,13 @@ void loadConfig() {
     return;
   }
 
-  strncpy(mqtt_server, json["mqtt_server"].as<const char*>(), 63);
-  strncpy(mqtt_username, json["mqtt_username"].as<const char*>(), 63);
-  strncpy(mqtt_password, json["mqtt_password"].as<const char*>(), 63);
+  strcpy(mqtt_server, json["mqtt_server"]);
+  strcpy(mqtt_username, json["mqtt_username"]);
+  strcpy(mqtt_password, json["mqtt_password"]);
 
-  wifi_param_mqtt_server.setValue(mqtt_server, 64);
-  wifi_param_mqtt_username.setValue(mqtt_username, 64);
-  wifi_param_mqtt_password.setValue(mqtt_password, 64);
+  wifi_param_mqtt_server.setValue(mqtt_server, sizeof(mqtt_server));
+  wifi_param_mqtt_username.setValue(mqtt_username, sizeof(mqtt_username));
+  wifi_param_mqtt_password.setValue(mqtt_password, sizeof(mqtt_password));
 
   SerialDebug.printf("Config JSON: %s\n", json.as<String>().c_str());
 }
@@ -472,7 +471,7 @@ void resetWifiSettingsAndReboot() {
 }
 
 void mqttConnect() {
-  SerialDebug.printf("Connecting to MQTT server: %s (%s : %s)... ", mqtt_server, mqtt_username, mqtt_password);
+  SerialDebug.printf("Connecting to MQTT server: host = %s (user: %s : pass: %s)... ", mqtt_server, mqtt_username, mqtt_password);
 
   if (mqttClient.connect(BOARD_ID.c_str(), mqtt_username, mqtt_password, MQTT_TOPIC_AVAILABILITY.c_str(), 1, true, "offline")) {
     SerialDebug.println("connected");
