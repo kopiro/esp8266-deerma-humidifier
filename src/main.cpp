@@ -26,8 +26,8 @@ unsigned long currentTime = millis();
 #define BOARD_PREFIX "esp8266-deerma-humidifier"
 
 char mqtt_server[64] = "";
-char mqtt_username[64] = "";
-char mqtt_password[64] = "";
+char mqtt_user[64] = "";
+char mqtt_pass[64] = "";
 
 String BOARD_ID;
 
@@ -50,12 +50,12 @@ PubSubClient mqttClient;
 
 WiFiManagerParameter wifi_param_mqtt_server("mqtt_server", "MQTT server",
   mqtt_server, sizeof(mqtt_server));
-WiFiManagerParameter wifi_param_mqtt_username("mqtt_user", "MQTT username",
-    mqtt_username,
-    sizeof(mqtt_username));
-WiFiManagerParameter wifi_param_mqtt_password("mqtt_pass", "MQTT password",
-    mqtt_password,
-    sizeof(mqtt_password));
+WiFiManagerParameter wifi_param_mqtt_user("mqtt_user", "MQTT username",
+    mqtt_user,
+    sizeof(mqtt_user));
+WiFiManagerParameter wifi_param_mqtt_pass("mqtt_pass", "MQTT password",
+    mqtt_pass,
+    sizeof(mqtt_pass));
 
 enum humMode_t { unknown = -1, low = 1, medium = 2, high = 3, setpoint = 4 };
 struct humidifierState_t {
@@ -293,14 +293,10 @@ void saveConfig() {
   }
 
   DynamicJsonDocument json(512);
-  const char* server = wifi_param_mqtt_server.getValue();
-  const char* username = wifi_param_mqtt_username.getValue();
-  const char* password = wifi_param_mqtt_password.getValue();
 
-  // Copy username and password (can be empty)
-  json["mqtt_server"] = server;
-  json["mqtt_username"] = username;
-  json["mqtt_password"] = password;
+  json["mqtt_server"] = wifi_param_mqtt_server.getValue();
+  json["mqtt_user"] = wifi_param_mqtt_user.getValue();
+  json["mqtt_pass"] = wifi_param_mqtt_pass.getValue();
 
   File configFile = SPIFFS.open("/config.json", "w");
   if (!configFile) {
@@ -313,6 +309,11 @@ void saveConfig() {
     configFile.close();
     return;
   }
+
+  // Copy the values to the global variables
+  strcpy(mqtt_server, json["mqtt_server"]);
+  strcpy(mqtt_user, json["mqtt_user"]);
+  strcpy(mqtt_pass, json["mqtt_pass"]);
 
   configFile.close();
   SerialDebug.printf("Saved JSON: %s\n", json.as<String>().c_str());
@@ -328,8 +329,7 @@ void loadConfig() {
   }
 
   if (!SPIFFS.exists("/config.json")) {
-    SerialDebug.println("Config file not found, please configure the ESP by "
-                        "connecting to its Wi-Fi hotspot");
+    SerialDebug.println("Config file not found, please configure the ESP by connecting to its Wi-Fi hotspot");
     return;
   }
 
@@ -358,31 +358,13 @@ void loadConfig() {
     return;
   }
 
-  // Copy MQTT server with size check
-  const char* server = json["mqtt_server"];
-  if (server && strlen(server) < sizeof(mqtt_server)) {
-    strncpy(mqtt_server, server, sizeof(mqtt_server) - 1);
-    mqtt_server[sizeof(mqtt_server) - 1] = '\0';
-  }
+  strcpy(mqtt_server, json["mqtt_server"]);
+  strcpy(mqtt_user, json["mqtt_user"]);
+  strcpy(mqtt_pass, json["mqtt_pass"]);
 
-  // Copy username with size check
-  const char* username = json["mqtt_username"];
-  if (username && strlen(username) < sizeof(mqtt_username)) {
-    strncpy(mqtt_username, username, sizeof(mqtt_username) - 1);
-    mqtt_username[sizeof(mqtt_username) - 1] = '\0';
-  }
-
-  // Copy password with size check
-  const char* password = json["mqtt_password"];
-  if (password && strlen(password) < sizeof(mqtt_password)) {
-    strncpy(mqtt_password, password, sizeof(mqtt_password) - 1);
-    mqtt_password[sizeof(mqtt_password) - 1] = '\0';
-  }
-
-  // Update WiFi manager parameters
-  wifi_param_mqtt_server.setValue(mqtt_server, sizeof(mqtt_server));
-  wifi_param_mqtt_username.setValue(mqtt_username, sizeof(mqtt_username));
-  wifi_param_mqtt_password.setValue(mqtt_password, sizeof(mqtt_password));
+  wifi_param_mqtt_server.setValue(mqtt_server);
+  wifi_param_mqtt_user.setValue(mqtt_user);
+  wifi_param_mqtt_pass.setValue(mqtt_pass);
 
   SerialDebug.printf("Config JSON: %s\n", json.as<String>().c_str());
 }
@@ -446,8 +428,8 @@ void setupWifi() {
   wifiManager.setSaveParamsCallback(saveConfig);
 
   wifiManager.addParameter(&wifi_param_mqtt_server);
-  wifiManager.addParameter(&wifi_param_mqtt_username);
-  wifiManager.addParameter(&wifi_param_mqtt_password);
+  wifiManager.addParameter(&wifi_param_mqtt_user);
+  wifiManager.addParameter(&wifi_param_mqtt_pass);
 
   if (WiFi.status() == WL_CONNECTED || wifiManager.autoConnect(BOARD_ID.c_str())) {
     // If we are connected to autoConnect, start the web portal for the configuration screen,
@@ -518,9 +500,9 @@ void mqttConnect() {
     return;
   }
   
-  SerialDebug.printf("Connecting to MQTT server: host = %s (user: %s : pass: %s)... ", mqtt_server, mqtt_username, mqtt_password);
+  SerialDebug.printf("Connecting to MQTT server: host = %s (user: %s : pass: %s)... ", mqtt_server, mqtt_user, mqtt_pass);
 
-  if (mqttClient.connect(BOARD_ID.c_str(), mqtt_username, mqtt_password, MQTT_TOPIC_AVAILABILITY.c_str(), 1, true, "offline")) {
+  if (mqttClient.connect(BOARD_ID.c_str(), mqtt_user, mqtt_pass, MQTT_TOPIC_AVAILABILITY.c_str(), 1, true, "offline")) {
     SerialDebug.println("connected");
 
     mqttClient.subscribe(MQTT_TOPIC_COMMAND.c_str());
