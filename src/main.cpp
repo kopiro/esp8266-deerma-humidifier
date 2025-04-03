@@ -306,7 +306,7 @@ void saveConfig() {
   serializeJson(json, configFile);
   configFile.close();
 
-  Serial.printf("Saved JSON: %s", json.as<String>().c_str());
+  SerialDebug.printf("Saved JSON: %s", json.as<String>().c_str());
 }
 
 void loadConfig() {
