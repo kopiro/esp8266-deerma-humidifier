@@ -44,7 +44,7 @@ String MQTT_TOPIC_AUTOCONF_HUMIDIFIER;
 String MQTT_TOPIC_AUTOCONF_SOUND_SWITCH;
 String MQTT_TOPIC_AUTOCONF_LED_SWITCH;
 
-WiFiManager wifiManager;
+WiFiManager wifiManager(SerialDebug);
 WiFiClient wifiClient;
 PubSubClient mqttClient;
 
@@ -90,9 +90,6 @@ void sendMQTTMessage(String topic, String message, bool retained) {
     SerialDebug.println("error");
   }
 }
-
-
-
 
 void sendHAAutoDiscovery() {
   char mqttPayload[2048];
@@ -406,7 +403,7 @@ void setupWifi() {
   WiFi.hostname(BOARD_ID);
 
   wifiManager.setConfigPortalBlocking(false);
-  wifiManager.setDebugOutput(false);
+  wifiManager.setDebugOutput(true);
   wifiManager.setSaveParamsCallback(saveConfig);
 
   wifiManager.addParameter(&wifi_param_mqtt_server);
