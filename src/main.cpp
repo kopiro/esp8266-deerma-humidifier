@@ -286,10 +286,21 @@ char nextDownstreamMessage[DOWNSTREAM_QUEUE_ELEM_SIZE] = "";
 void saveConfig() {
   SerialDebug.println("Saving config...");
 
+  // Initialize SPIFFS if not already done
+  if (!SPIFFS.begin()) {
+    SerialDebug.println("Failed to initialize SPIFFS");
+    return;
+  }
+
   DynamicJsonDocument json(512);
-  json["mqtt_server"] = wifi_param_mqtt_server.getValue();
-  json["mqtt_username"] = wifi_param_mqtt_username.getValue();
-  json["mqtt_password"] = wifi_param_mqtt_password.getValue();
+  const char* server = wifi_param_mqtt_server.getValue();
+  const char* username = wifi_param_mqtt_username.getValue();
+  const char* password = wifi_param_mqtt_password.getValue();
+
+  // Copy username and password (can be empty)
+  json["mqtt_server"] = server;
+  json["mqtt_username"] = username;
+  json["mqtt_password"] = password;
 
   File configFile = SPIFFS.open("/config.json", "w");
   if (!configFile) {
@@ -297,17 +308,22 @@ void saveConfig() {
     return;
   }
 
-  serializeJson(json, configFile);
-  configFile.close();
+  if (serializeJson(json, configFile) == 0) {
+    SerialDebug.println("Failed to write config file");
+    configFile.close();
+    return;
+  }
 
+  configFile.close();
   SerialDebug.printf("Saved JSON: %s\n", json.as<String>().c_str());
 }
 
 void loadConfig() {
   SerialDebug.println("Loading config");
 
+  // Initialize SPIFFS
   if (!SPIFFS.begin()) {
-    SerialDebug.println("Failed to open SPIFFS");
+    SerialDebug.println("Failed to initialize SPIFFS");
     return;
   }
 
@@ -324,20 +340,46 @@ void loadConfig() {
   }
 
   const size_t size = configFile.size();
-  std::unique_ptr<char[]> buf(new char[size]);
-
-  configFile.readBytes(buf.get(), size);
-  DynamicJsonDocument json(512);
-
-  if (DeserializationError::Ok != deserializeJson(json, buf.get())) {
-    SerialDebug.println("Failed to parse config fileDebug");
+  if (size > 512) {
+    SerialDebug.println("Config file too large");
+    configFile.close();
     return;
   }
 
-  strcpy(mqtt_server, json["mqtt_server"]);
-  strcpy(mqtt_username, json["mqtt_username"]);
-  strcpy(mqtt_password, json["mqtt_password"]);
+  std::unique_ptr<char[]> buf(new char[size + 1]);
+  configFile.readBytes(buf.get(), size);
+  buf[size] = '\0'; // Ensure null termination
+  configFile.close();
 
+  DynamicJsonDocument json(512);
+  DeserializationError error = deserializeJson(json, buf.get());
+  if (error) {
+    SerialDebug.printf("Failed to parse config file: %s\n", error.c_str());
+    return;
+  }
+
+  // Copy MQTT server with size check
+  const char* server = json["mqtt_server"];
+  if (server && strlen(server) < sizeof(mqtt_server)) {
+    strncpy(mqtt_server, server, sizeof(mqtt_server) - 1);
+    mqtt_server[sizeof(mqtt_server) - 1] = '\0';
+  }
+
+  // Copy username with size check
+  const char* username = json["mqtt_username"];
+  if (username && strlen(username) < sizeof(mqtt_username)) {
+    strncpy(mqtt_username, username, sizeof(mqtt_username) - 1);
+    mqtt_username[sizeof(mqtt_username) - 1] = '\0';
+  }
+
+  // Copy password with size check
+  const char* password = json["mqtt_password"];
+  if (password && strlen(password) < sizeof(mqtt_password)) {
+    strncpy(mqtt_password, password, sizeof(mqtt_password) - 1);
+    mqtt_password[sizeof(mqtt_password) - 1] = '\0';
+  }
+
+  // Update WiFi manager parameters
   wifi_param_mqtt_server.setValue(mqtt_server, sizeof(mqtt_server));
   wifi_param_mqtt_username.setValue(mqtt_username, sizeof(mqtt_username));
   wifi_param_mqtt_password.setValue(mqtt_password, sizeof(mqtt_password));
@@ -471,6 +513,11 @@ void resetWifiSettingsAndReboot() {
 }
 
 void mqttConnect() {
+  if (strlen(mqtt_server) == 0) {
+    SerialDebug.println("MQTT server not configured, skipping connection");
+    return;
+  }
+  
   SerialDebug.printf("Connecting to MQTT server: host = %s (user: %s : pass: %s)... ", mqtt_server, mqtt_username, mqtt_password);
 
   if (mqttClient.connect(BOARD_ID.c_str(), mqtt_username, mqtt_password, MQTT_TOPIC_AVAILABILITY.c_str(), 1, true, "offline")) {
@@ -847,7 +894,6 @@ void setup() {
   setupWifi();
   setupMDNS();
   setupOTA();
-
   setupMQTT();
 }
 
@@ -859,6 +905,5 @@ void loop() {
   loopWifi();
   loopMDNS();
   loopOTA();
-
   loopMQTT();
 }
