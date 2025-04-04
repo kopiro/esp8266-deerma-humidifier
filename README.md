@@ -13,9 +13,9 @@ The Model on the packaging being `ZNJSQ01DEM`.
 
 Communication is done via a few MQTT Topics:
 
-- `esp8266-deerma-humidifier/HUMIDIFIER-%CHIP_ID%/availability`
-- `esp8266-deerma-humidifier/HUMIDIFIER-%CHIP_ID%/state`
-- `esp8266-deerma-humidifier/HUMIDIFIER-%CHIP_ID%/command`
+- `esp8266-deerma-humidifier/%CHIP_ID%/availability`
+- `esp8266-deerma-humidifier/%CHIP_ID%/state`
+- `esp8266-deerma-humidifier/%CHIP_ID%/command`
 
 *The humidifier configures itself automatically to a running instance of Home Assistant.*
 
