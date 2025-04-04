@@ -25,9 +25,14 @@ unsigned long currentTime = millis();
 
 #define BOARD_PREFIX "esp8266-deerma-humidifier"
 
-char mqtt_server[64] = "";
-char mqtt_user[64] = "";
-char mqtt_pass[64] = "";
+char mqtt_server[64];
+char mqtt_user[64];
+char mqtt_pass[64];
+
+WiFiManagerParameter wifi_param_mqtt_server("mqtt_server", "MQTT server", mqtt_server, 64);
+WiFiManagerParameter wifi_param_mqtt_user("mqtt_user", "MQTT username", mqtt_user, 64);
+WiFiManagerParameter wifi_param_mqtt_pass("mqtt_pass", "MQTT password", mqtt_pass, 64);
+
 
 String BOARD_ID;
 
@@ -48,14 +53,6 @@ WiFiManager wifiManager(SerialDebug);
 WiFiClient wifiClient;
 PubSubClient mqttClient;
 
-WiFiManagerParameter wifi_param_mqtt_server("mqtt_server", "MQTT server",
-  mqtt_server, sizeof(mqtt_server));
-WiFiManagerParameter wifi_param_mqtt_user("mqtt_user", "MQTT username",
-    mqtt_user,
-    sizeof(mqtt_user));
-WiFiManagerParameter wifi_param_mqtt_pass("mqtt_pass", "MQTT password",
-    mqtt_pass,
-    sizeof(mqtt_pass));
 
 enum humMode_t { unknown = -1, low = 1, medium = 2, high = 3, setpoint = 4 };
 struct humidifierState_t {
@@ -286,14 +283,12 @@ char nextDownstreamMessage[DOWNSTREAM_QUEUE_ELEM_SIZE] = "";
 void saveConfig() {
   SerialDebug.println("Saving config...");
 
-  // Initialize SPIFFS if not already done
-  if (!SPIFFS.begin()) {
-    SerialDebug.println("Failed to initialize SPIFFS");
-    return;
-  }
-
+  // Collect parameters
+  strcpy(mqtt_server, wifi_param_mqtt_server.getValue());
+  strcpy(mqtt_user, wifi_param_mqtt_user.getValue());
+  strcpy(mqtt_pass, wifi_param_mqtt_pass.getValue());
+  
   DynamicJsonDocument json(512);
-
   json["mqtt_server"] = wifi_param_mqtt_server.getValue();
   json["mqtt_user"] = wifi_param_mqtt_user.getValue();
   json["mqtt_pass"] = wifi_param_mqtt_pass.getValue();
@@ -304,18 +299,9 @@ void saveConfig() {
     return;
   }
 
-  if (serializeJson(json, configFile) == 0) {
-    SerialDebug.println("Failed to write config file");
-    configFile.close();
-    return;
-  }
-
-  // Copy the values to the global variables
-  strcpy(mqtt_server, json["mqtt_server"]);
-  strcpy(mqtt_user, json["mqtt_user"]);
-  strcpy(mqtt_pass, json["mqtt_pass"]);
-
+  serializeJson(json, configFile);
   configFile.close();
+
   SerialDebug.printf("Saved JSON: %s\n", json.as<String>().c_str());
 }
 
@@ -338,33 +324,26 @@ void loadConfig() {
     SerialDebug.println("Failed to open config file");
     return;
   }
-
+  
   const size_t size = configFile.size();
-  if (size > 512) {
-    SerialDebug.println("Config file too large");
-    configFile.close();
-    return;
-  }
+  std::unique_ptr<char[]> buf(new char[size]);
 
-  std::unique_ptr<char[]> buf(new char[size + 1]);
   configFile.readBytes(buf.get(), size);
-  buf[size] = '\0'; // Ensure null termination
-  configFile.close();
-
   DynamicJsonDocument json(512);
-  DeserializationError error = deserializeJson(json, buf.get());
-  if (error) {
-    SerialDebug.printf("Failed to parse config file: %s\n", error.c_str());
+
+  if (DeserializationError::Ok != deserializeJson(json, buf.get())) {
+    SerialDebug.println("Failed to parse config fileDebug");
     return;
   }
 
+  // Copy the values to the global variables
   strcpy(mqtt_server, json["mqtt_server"]);
   strcpy(mqtt_user, json["mqtt_user"]);
   strcpy(mqtt_pass, json["mqtt_pass"]);
 
-  wifi_param_mqtt_server.setValue(mqtt_server);
-  wifi_param_mqtt_user.setValue(mqtt_user);
-  wifi_param_mqtt_pass.setValue(mqtt_pass);
+  wifi_param_mqtt_server.setValue(mqtt_server, sizeof(mqtt_server));
+  wifi_param_mqtt_user.setValue(mqtt_user, sizeof(mqtt_user));
+  wifi_param_mqtt_pass.setValue(mqtt_pass, sizeof(mqtt_pass));
 
   SerialDebug.printf("Config JSON: %s\n", json.as<String>().c_str());
 }
@@ -395,22 +374,22 @@ void setupGeneric() {
   MQTT_TOPIC_AVAILABILITY = BOARD_ID + "/availability";
 
   // Home Assistant auto-discovery topics
-  MQTT_TOPIC_AUTOCONF_TEMPERATURE_SENSOR = String("homeassistant/sensor/") +
-                                           BOARD_ID +
-                                           "/temperature/config";
+  MQTT_TOPIC_AUTOCONF_TEMPERATURE_SENSOR = String("homeassistant/sensor/") + 
+                                           BOARD_ID + 
+                                           String("/temperature/config");
   MQTT_TOPIC_AUTOCONF_HUMIDITY_SENSOR =
-      String("homeassistant/sensor/") + BOARD_ID + "/humidity/config";
+      String("homeassistant/sensor/") + BOARD_ID + String("/humidity/config");
   MQTT_TOPIC_AUTOCONF_WIFI_SENSOR =
-      String("homeassistant/sensor/") + BOARD_ID + "/wifi/config";
+      String("homeassistant/sensor/") + BOARD_ID + String("/wifi/config");
   MQTT_TOPIC_AUTOCONF_WATER_TANK_SENSOR =
       String("homeassistant/binary_sensor/") + BOARD_ID +
-      "/water_tank/config";
+      String("/water_tank/config");
   MQTT_TOPIC_AUTOCONF_HUMIDIFIER =
-      String("homeassistant/switch/") + BOARD_ID + "/humidifier/config";
+      String("homeassistant/switch/") + BOARD_ID + String("/humidifier/config");
   MQTT_TOPIC_AUTOCONF_SOUND_SWITCH =
-      String("homeassistant/switch/") + BOARD_ID + "/sound/config";
+      String("homeassistant/switch/") + BOARD_ID + String("/sound/config");
   MQTT_TOPIC_AUTOCONF_LED_SWITCH =
-      String("homeassistant/switch/") + BOARD_ID + "/led/config";
+      String("homeassistant/switch/") + BOARD_ID + String("/led/config");
 
   loadConfig();
 }
