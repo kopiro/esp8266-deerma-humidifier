@@ -1,18 +1,29 @@
 # esp8266-deerma-humidifier-v2
 
-This is a custom firmware for the ESP8285-based Wi-Fi module of the Xiaomi Mi Smart Antibacterial Humidifier,
-which replaces cloud connectivity with local mqtt controls.
+---
+
+Everything is based on the awesome work done [in this repository](https://github.com/Hypfer/esp8266-deerma-humidifier), where you can also find instructions on how to flash the device.
+
+---
+
+This is a custom firmware for the ESP8285-based Wi-Fi module of the Xiaomi Mi Smart Antibacterial Humidifier, which replaces cloud connectivity with local mqtt controls.
 
 The internal Mi Model ID of the supported device is `deerma.humidifier.jsq`.
 The Model on the packaging being `ZNJSQ01DEM`.
 
 Communication is done via a few MQTT Topics:
 
-- `esp8266-deerma-humidifier/HUMIDIFIER-%CHIP_ID%/status`
+- `esp8266-deerma-humidifier/HUMIDIFIER-%CHIP_ID%/availability`
 - `esp8266-deerma-humidifier/HUMIDIFIER-%CHIP_ID%/state`
 - `esp8266-deerma-humidifier/HUMIDIFIER-%CHIP_ID%/command`
 
-`/status` will either contain `online` or `offline` and is also used for the LWT.
+*The humidifier configures itself automatically to a running instance of Home Assistant.*
+
+### Availability topic
+
+`/availability` will either contain `online` or `offline` and is also used for the LWT.
+
+### State
 
 `/state` will contain a JSON state which looks like this:
 
@@ -34,8 +45,13 @@ Communication is done via a few MQTT Topics:
 }
 ```
 
-and of course you can control the device via the `/control` topic which expects the same JSON structure as the state provides.<br/>
-That also means that you can run multiple commands at once. For example if you wanted to turn LED off but Sound on, you'd publish
+### Control
+
+You can control the device via the `/command` topic which expects the same JSON structure as the state provides.
+
+That also means that you can run multiple commands at once. 
+
+For example if you wanted to turn LED off but Sound on, you'd publish
 
 ```json
 {
