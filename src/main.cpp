@@ -102,6 +102,7 @@ void sendHAAutoDiscovery() {
   device["model"] = "Mi Smart Antibacterial Humidifier";
   device["name"] = BOARD_ID;
   device["sw_version"] = SOFTWARE_VERSION;
+  device["configuration_url"] = String(String("http://") + String(WiFi.localIP().toString()));
 
   autoconfPayload["device"] = device.as<JsonObject>();
   autoconfPayload["availability_topic"] = MQTT_TOPIC_AVAILABILITY;
@@ -378,8 +379,8 @@ void setupGeneric() {
   MQTT_TOPIC_AUTOCONF_TEMPERATURE_SENSOR = String("homeassistant/sensor/") + BOARD_ID + String("/temperature/config");
   MQTT_TOPIC_AUTOCONF_HUMIDITY_SENSOR = String("homeassistant/sensor/") + BOARD_ID + String("/humidity/config");
   MQTT_TOPIC_AUTOCONF_WIFI_SENSOR = String("homeassistant/sensor/") + BOARD_ID + String("/wifi/config");
-  MQTT_TOPIC_AUTOCONF_WATER_TANK_SENSOR = String("homeassistant/binary_sensor/") + BOARD_ID + String("/water_tank/config");
-  MQTT_TOPIC_AUTOCONF_HUMIDIFIER = String("homeassistant/switch/") + BOARD_ID + String("/humidifier/config");
+  MQTT_TOPIC_AUTOCONF_WATER_TANK_SENSOR = String("homeassistant/sensor/") + BOARD_ID + String("/water_tank/config");
+  MQTT_TOPIC_AUTOCONF_HUMIDIFIER = String("homeassistant/humidifier/") + BOARD_ID + String("/humidifier/config");
   MQTT_TOPIC_AUTOCONF_SOUND_SWITCH = String("homeassistant/switch/") + BOARD_ID + String("/sound/config");
   MQTT_TOPIC_AUTOCONF_LED_SWITCH = String("homeassistant/switch/") + BOARD_ID + String("/led/config");
 
