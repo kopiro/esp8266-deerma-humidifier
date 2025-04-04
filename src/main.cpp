@@ -4,8 +4,8 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
 #include <PubSubClient.h>
-#include <WiFiManager.h>
 #include <SoftwareSerial.h>
+#include <WiFiManager.h>
 
 /*
 Firmware documentation:
@@ -33,7 +33,6 @@ WiFiManagerParameter wifi_param_mqtt_server("mqtt_server", "MQTT server", mqtt_s
 WiFiManagerParameter wifi_param_mqtt_user("mqtt_user", "MQTT username", mqtt_user, 64);
 WiFiManagerParameter wifi_param_mqtt_pass("mqtt_pass", "MQTT password", mqtt_pass, 64);
 
-
 String BOARD_ID;
 
 String MQTT_TOPIC_STATE;
@@ -53,8 +52,11 @@ WiFiManager wifiManager(SerialDebug);
 WiFiClient wifiClient;
 PubSubClient mqttClient;
 
-
-enum humMode_t { unknown = -1, low = 1, medium = 2, high = 3, setpoint = 4 };
+enum humMode_t { unknown = -1,
+                 low = 1,
+                 medium = 2,
+                 high = 3,
+                 setpoint = 4 };
 struct humidifierState_t {
   boolean powerOn;
 
@@ -158,7 +160,7 @@ void sendHAAutoDiscovery() {
   autoconfPayload["icon"] = "mdi:cup-water";
   autoconfPayload["entity_category"] = "diagnostic";
 
-  serializeJson(autoconfPayload, mqttPayload);
+  serializeJson(autoconfPaywload, mqttPayload);
   sendMQTTMessage(MQTT_TOPIC_AUTOCONF_WATER_TANK_SENSOR, mqttPayload, true);
 
   autoconfPayload.clear();
@@ -287,7 +289,7 @@ void saveConfig() {
   strcpy(mqtt_server, wifi_param_mqtt_server.getValue());
   strcpy(mqtt_user, wifi_param_mqtt_user.getValue());
   strcpy(mqtt_pass, wifi_param_mqtt_pass.getValue());
-  
+
   DynamicJsonDocument json(512);
   json["mqtt_server"] = wifi_param_mqtt_server.getValue();
   json["mqtt_user"] = wifi_param_mqtt_user.getValue();
@@ -324,7 +326,7 @@ void loadConfig() {
     SerialDebug.println("Failed to open config file");
     return;
   }
-  
+
   const size_t size = configFile.size();
   std::unique_ptr<char[]> buf(new char[size]);
 
@@ -374,22 +376,13 @@ void setupGeneric() {
   MQTT_TOPIC_AVAILABILITY = BOARD_ID + "/availability";
 
   // Home Assistant auto-discovery topics
-  MQTT_TOPIC_AUTOCONF_TEMPERATURE_SENSOR = String("homeassistant/sensor/") + 
-                                           BOARD_ID + 
-                                           String("/temperature/config");
-  MQTT_TOPIC_AUTOCONF_HUMIDITY_SENSOR =
-      String("homeassistant/sensor/") + BOARD_ID + String("/humidity/config");
-  MQTT_TOPIC_AUTOCONF_WIFI_SENSOR =
-      String("homeassistant/sensor/") + BOARD_ID + String("/wifi/config");
-  MQTT_TOPIC_AUTOCONF_WATER_TANK_SENSOR =
-      String("homeassistant/binary_sensor/") + BOARD_ID +
-      String("/water_tank/config");
-  MQTT_TOPIC_AUTOCONF_HUMIDIFIER =
-      String("homeassistant/switch/") + BOARD_ID + String("/humidifier/config");
-  MQTT_TOPIC_AUTOCONF_SOUND_SWITCH =
-      String("homeassistant/switch/") + BOARD_ID + String("/sound/config");
-  MQTT_TOPIC_AUTOCONF_LED_SWITCH =
-      String("homeassistant/switch/") + BOARD_ID + String("/led/config");
+  MQTT_TOPIC_AUTOCONF_TEMPERATURE_SENSOR = String("homeassistant/sensor/") + BOARD_ID + String("/temperature/config");
+  MQTT_TOPIC_AUTOCONF_HUMIDITY_SENSOR = String("homeassistant/sensor/") + BOARD_ID + String("/humidity/config");
+  MQTT_TOPIC_AUTOCONF_WIFI_SENSOR = String("homeassistant/sensor/") + BOARD_ID + String("/wifi/config");
+  MQTT_TOPIC_AUTOCONF_WATER_TANK_SENSOR = String("homeassistant/binary_sensor/") + BOARD_ID + String("/water_tank/config");
+  MQTT_TOPIC_AUTOCONF_HUMIDIFIER = String("homeassistant/switch/") + BOARD_ID + String("/humidifier/config");
+  MQTT_TOPIC_AUTOCONF_SOUND_SWITCH = String("homeassistant/switch/") + BOARD_ID + String("/sound/config");
+  MQTT_TOPIC_AUTOCONF_LED_SWITCH = String("homeassistant/switch/") + BOARD_ID + String("/led/config");
 
   loadConfig();
 }
@@ -410,9 +403,10 @@ void setupWifi() {
   wifiManager.addParameter(&wifi_param_mqtt_user);
   wifiManager.addParameter(&wifi_param_mqtt_pass);
 
-  if (WiFi.status() == WL_CONNECTED || wifiManager.autoConnect(BOARD_ID.c_str())) {
-    // If we are connected to autoConnect, start the web portal for the configuration screen,
-    // as otherwise it would not be accessible.
+  if (WiFi.status() == WL_CONNECTED ||
+      wifiManager.autoConnect(BOARD_ID.c_str())) {
+    // If we are connected to autoConnect, start the web portal for the
+    // configuration screen, as otherwise it would not be accessible.
     WiFi.mode(WIFI_STA); // Force the connection to be STA, not AP
     wifiManager.startWebPortal();
   } else {
@@ -422,13 +416,11 @@ void setupWifi() {
 
 void loopWifi() { wifiManager.process(); }
 
-
 boolean shouldUpdateState = false;
 
 void queueDownstreamMessage(const char *message) {
   if (downstreamQueueIndex >= DOWNSTREAM_QUEUE_SIZE - 1) {
-    SerialDebug.printf("Error: Queue is full. Dropping message: <%s>\n",
-                       message);
+    SerialDebug.printf("Error: Queue is full. Dropping message: <%s>\n", message);
     return;
   }
 
@@ -436,7 +428,6 @@ void queueDownstreamMessage(const char *message) {
   strncpy(downstreamQueue[downstreamQueueIndex], message, DOWNSTREAM_QUEUE_ELEM_SIZE - 1);
   downstreamQueue[downstreamQueueIndex][DOWNSTREAM_QUEUE_ELEM_SIZE - 1] = '\0';
 }
-
 
 void sendNetworkStatus(boolean isConnected) {
   queueDownstreamMessage("MIIO_net_change cloud");
@@ -478,7 +469,7 @@ void mqttConnect() {
     SerialDebug.println("MQTT server not configured, skipping connection");
     return;
   }
-  
+
   SerialDebug.printf("Connecting to MQTT server: host = %s (user: %s : pass: %s)... ", mqtt_server, mqtt_user, mqtt_pass);
 
   if (mqttClient.connect(BOARD_ID.c_str(), mqtt_user, mqtt_pass, MQTT_TOPIC_AVAILABILITY.c_str(), 1, true, "offline")) {
@@ -497,7 +488,6 @@ void mqttConnect() {
     SerialDebug.println("Unable to connect to MQTT broker");
   }
 }
-
 
 void loopMDNS() { MDNS.update(); }
 
@@ -608,7 +598,6 @@ void publishState() {
   sendMQTTMessage(MQTT_TOPIC_STATE, payload, false);
 }
 
-
 void loopUART() {
   if (!Serial.available()) {
     return;
@@ -701,14 +690,16 @@ void loopUART() {
     }
 
     memset(serialTxBuf, 0, sizeof(serialTxBuf));
-    snprintf(serialTxBuf, sizeof(serialTxBuf), "down %s\r", nextDownstreamMessage);
+    snprintf(serialTxBuf, sizeof(serialTxBuf), "down %s\r",
+             nextDownstreamMessage);
     Serial.print(serialTxBuf);
 
     return;
   }
 
   if (strncmp(serialRxBuf, "net", 3) == 0) {
-    // We need to always respond with cloud because otherwise the connection to the humidifier will break for some reason
+    // We need to always respond with cloud because otherwise the connection to
+    // the humidifier will break for some reason
     Serial.print("cloud\r");
     return;
   }
@@ -735,9 +726,10 @@ void loopUART() {
 
 void mqttCallback(char *_topic, byte *_payload, unsigned int length) {
   String topic = String(_topic);
-  String payload = String((char*)_payload).substring(0, length);
+  String payload = String((char *)_payload).substring(0, length);
 
-  SerialDebug.printf("MQTT callback with topic <%s> and payload <%s>\n", topic.c_str(), payload.c_str());
+  SerialDebug.printf("MQTT callback with topic <%s> and payload <%s>\n",
+                     topic.c_str(), payload.c_str());
 
   if (topic == "homeassistant/status") {
     if (payload == "online") {
@@ -747,7 +739,7 @@ void mqttCallback(char *_topic, byte *_payload, unsigned int length) {
     return;
   }
 
-  if (topic == "command") {
+  if (topic == MQTT_TOPIC_COMMAND) {
     DynamicJsonDocument commandJson(256);
     DeserializationError err = deserializeJson(commandJson, _payload);
 
@@ -813,6 +805,8 @@ void mqttCallback(char *_topic, byte *_payload, unsigned int length) {
       publishState();
     }
   }
+
+  SerialDebug.print("Unrecognized command");
 }
 
 void setupMQTT() {
@@ -825,7 +819,6 @@ void setupMQTT() {
 
   mqttConnect();
 }
-
 
 void setupUART() {
   Serial.begin(115200);
@@ -845,7 +838,6 @@ void setupOTA() {
 }
 
 void loopOTA() { ArduinoOTA.handle(); }
-
 
 void setup() {
   setupUART();
