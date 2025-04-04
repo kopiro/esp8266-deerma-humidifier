@@ -80,8 +80,7 @@ humidifierState_t state;
 unsigned long mqttLastTime = millis();
 
 void sendMQTTMessage(String topic, String message, bool retained) {
-  SerialDebug.printf("MQTT message - topic: <%s>, message: <%s> -> ", topic,
-                     message);
+  SerialDebug.printf("MQTT message - topic: <%s>, message: <%s> -> ", topic.c_str(), message.c_str());
   if (mqttClient.publish(topic.c_str(), message.c_str(), retained)) {
     SerialDebug.println("sent");
   } else {
@@ -160,7 +159,7 @@ void sendHAAutoDiscovery() {
   autoconfPayload["icon"] = "mdi:cup-water";
   autoconfPayload["entity_category"] = "diagnostic";
 
-  serializeJson(autoconfPaywload, mqttPayload);
+  serializeJson(autoconfPayload, mqttPayload);
   sendMQTTMessage(MQTT_TOPIC_AUTOCONF_WATER_TANK_SENSOR, mqttPayload, true);
 
   autoconfPayload.clear();
